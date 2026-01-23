@@ -6,7 +6,8 @@ from pydantic import BaseModel
 # -----------------------------
 # Load trained pipeline
 # -----------------------------
-model = joblib.load("random_forest_pipeline.pkl")
+model = joblib.load("credit_risk_random_forest.pkl")
+RISK_THRESHOLD = 0.35
 
 # -----------------------------
 # FastAPI app
@@ -95,13 +96,24 @@ def predict_credit_risk(data: CreditInput):
         # Prediction
         # -----------------------------
         prob = model.predict_proba(df)[0][1]
-        prediction = int(prob >= 0.45)
+        prediction = int(prob >= RISK_THRESHOLD)
+
 
         return {
             "default_probability": round(float(prob), 3),
             "prediction": prediction,
-            "risk_label": "High Risk" if prediction == 1 else "Low Risk"
-        }
+             "risk_bucket": risk_bucket(prob)
+            }
+
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def risk_bucket(p):
+    if p >= 0.6:
+        return "HIGH RISK (Reject)"
+    elif p >= 0.35:
+        return "MEDIUM RISK (Manual Review)"
+    else:
+        return "LOW RISK (Approve)"
